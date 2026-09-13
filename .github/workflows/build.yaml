@@ -32,13 +32,13 @@ jobs:
         run: |
           cd ${{ github.workspace }}/build
           printf 'cmd1\ncmd2\ncmd3\ncmd4\ncmd5\n{\ncmd6\ncmd7\n}\ncmd8\n' \
-            | LD_LIBRARY_PATH=. ./async_demo 3 > out.txt
+            | LD_LIBRARY_PATH=. ./async_demo 3 9000 > out.txt
           cat out.txt
           grep -q 'bulk: cmd1, cmd2, cmd3' out.txt
           grep -q 'bulk: cmd4, cmd5' out.txt
           grep -q 'bulk: cmd6, cmd7' out.txt
           grep -q 'bulk: cmd8' out.txt
-          test "$(ls bulk*.log | wc -l)" -eq 3
+          test "$(ls bulk*.log | wc -l)" -eq 4
  
       - name: Smoke test (bulk_server over TCP)
         run: |
