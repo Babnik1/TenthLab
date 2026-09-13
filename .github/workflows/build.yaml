@@ -48,9 +48,8 @@ jobs:
           LD_LIBRARY_PATH=. ./bulk_server 9000 3 > server_out.txt 2>&1 &
           SERVER_PID=$!
  
-          # Дать серверу время забиндить порт.
           for i in $(seq 1 10); do
-            (echo > /dev/tcp/127.0.0.1/9000) 2>/dev/null && break
+            nc -z 127.0.0.1 9000 2>/dev/null && break
             sleep 0.5
           done
  
