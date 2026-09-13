@@ -34,7 +34,6 @@ set_target_properties( async PROPERTIES
 add_executable( async_demo demo/main.cpp )
 target_link_libraries( async_demo PRIVATE async )
  
- 
 add_executable( bulk_server
         server/src/main.cpp
         server/src/server.cpp
@@ -76,7 +75,3 @@ set( CPACK_DEB_COMPONENT_INSTALL ON )
 set( CPACK_COMPONENTS_ALL async bulk_server )
 set( CPACK_DEBIAN_ASYNC_PACKAGE_NAME "async" )
 set( CPACK_DEBIAN_BULK_SERVER_PACKAGE_NAME "bulk_server" )
-set( CPACK_DEBIAN_BULK_SERVER_PACKAGE_SHLIBDEPS ON )
-set( CPACK_DEBIAN_BULK_SERVER_PACKAGE_DEPENDS "async (= ${PROJECT_VERSION})" )
- 
-include( CPack )
