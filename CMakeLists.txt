@@ -8,6 +8,9 @@ set( CMAKE_CXX_STANDARD 20 )
 set( CMAKE_CXX_STANDARD_REQUIRED ON )
 
 find_package( Threads REQUIRED )
+find_package( Boost REQUIRED COMPONENTS system )
+
+# --- Библиотека async (Задание 9) -------------------------------------
 
 add_library( async SHARED
         src/async.cpp
@@ -32,21 +35,54 @@ set_target_properties( async PROPERTIES
 add_executable( async_demo demo/main.cpp )
 target_link_libraries( async_demo PRIVATE async )
 
+# --- Сервер bulk_server (Задание 10) -----------------------------------
+
+add_executable( bulk_server
+        server/src/main.cpp
+        server/src/server.cpp
+        server/src/session.cpp
+)
+
+target_include_directories( bulk_server PRIVATE server/include )
+
+target_link_libraries( bulk_server PRIVATE
+        async
+        Boost::system
+        Threads::Threads
+)
+
 include( GNUInstallDirs )
 
 install( TARGETS async
         LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
         PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+        COMPONENT async
 )
 
 install( TARGETS async_demo
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+        COMPONENT async
 )
 
-set( CPACK_PACKAGE_NAME "async" )
+install( TARGETS bulk_server
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+        COMPONENT bulk_server
+)
+
 set( CPACK_PACKAGE_VERSION ${PROJECT_VERSION} )
 set( CPACK_PACKAGE_CONTACT "example@example.com" )
 set( CPACK_GENERATOR "DEB" )
 set( CPACK_DEBIAN_PACKAGE_MAINTAINER "example@example.com" )
 set( CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON )
+
+# Каждый компонент собирается в отдельный .deb, чтобы bulk_server
+# оказался ровно в пакете "bulk_server", как того требует задание.
+set( CPACK_DEB_COMPONENT_INSTALL ON )
+set( CPACK_COMPONENTS_ALL async bulk_server )
+set( CPACK_DEBIAN_ASYNC_PACKAGE_NAME "async" )
+set( CPACK_DEBIAN_BULK_SERVER_PACKAGE_NAME "bulk_server" )
+set( CPACK_DEBIAN_BULK_SERVER_PACKAGE_SHLIBDEPS ON )
+# bulk_server использует libasync.so, поэтому пакет должен зависеть от async.
+set( CPACK_DEBIAN_BULK_SERVER_PACKAGE_DEPENDS "async (= ${PROJECT_VERSION})" )
+
 include( CPack )
