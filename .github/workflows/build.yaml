@@ -1,0 +1,82 @@
+name: C++ Build and Test
+ 
+on:
+  push:
+    branches: [ main ]
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [ main ]
+ 
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+ 
+    steps:
+      - uses: actions/checkout@v4
+ 
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libboost-dev libboost-system-dev netcat-openbsd
+ 
+      - name: Configure CMake
+        run: cmake -B build -S .
+ 
+      - name: Build
+        run: cmake --build ${{ github.workspace }}/build
+ 
+      - name: Smoke test (library + demo via Connect/Receive/Disconnect)
+        run: |
+          cd ${{ github.workspace }}/build
+          printf 'cmd1\ncmd2\ncmd3\ncmd4\ncmd5\n{\ncmd6\ncmd7\n}\ncmd8\n' \
+            | LD_LIBRARY_PATH=. ./async_demo 3 > out.txt
+          cat out.txt
+          grep -q 'bulk: cmd1, cmd2, cmd3' out.txt
+          grep -q 'bulk: cmd4, cmd5' out.txt
+          grep -q 'bulk: cmd6, cmd7' out.txt
+          grep -q 'bulk: cmd8' out.txt
+          test "$(ls bulk*.log | wc -l)" -eq 3
+ 
+      - name: Smoke test (bulk_server over TCP)
+        run: |
+          cd ${{ github.workspace }}/build
+          rm -f bulk*.log
+ 
+          LD_LIBRARY_PATH=. ./bulk_server 9000 3 > server_out.txt 2>&1 &
+          SERVER_PID=$!
+ 
+          # Дать серверу время забиндить порт.
+          for i in $(seq 1 10); do
+            (echo > /dev/tcp/127.0.0.1/9000) 2>/dev/null && break
+            sleep 0.5
+          done
+ 
+          seq 0 9 | nc -q1 localhost 9000
+ 
+          sleep 1
+          kill "$SERVER_PID"
+          wait "$SERVER_PID" 2>/dev/null || true
+ 
+          cat server_out.txt
+          grep -q 'bulk: 0, 1, 2' server_out.txt
+          grep -q 'bulk: 3, 4, 5' server_out.txt
+          grep -q 'bulk: 6, 7, 8' server_out.txt
+          grep -q 'bulk: 9' server_out.txt
+          test "$(ls bulk*.log | wc -l)" -eq 4
+ 
+      - name: Package (cpack)
+        run: |
+          cd ${{ github.workspace }}/build
+          cpack
+ 
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        if: github.event_name == 'push' && contains(github.ref, 'refs/tags/')
+        with:
+          files: |
+            build/*.deb
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
